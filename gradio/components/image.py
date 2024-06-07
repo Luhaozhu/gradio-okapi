@@ -270,6 +270,13 @@ class Image(
             assert isinstance(x, dict)
             x, mask = x["image"], x["mask"]
 
+        boxes = []
+        if self.tool == "boxes" and self.source in ["upload", "webcam"]:
+            assert isinstance(x, dict)
+            assert isinstance(x['image'], str)
+            assert isinstance(x['boxes'], list)
+            x, boxes = x["image"], x["boxes"]
+
         assert isinstance(x, str)
         im = processing_utils.decode_base64_to_image(x)
         with warnings.catch_warnings():
@@ -287,15 +294,17 @@ class Image(
             im = PIL.ImageOps.mirror(im)
 
         if self.tool == "sketch" and self.source in ["upload", "webcam"]:
-            mask_im = processing_utils.decode_base64_to_image(mask)
-
-            if mask_im.mode == "RGBA":  # whiten any opaque pixels in the mask
-                alpha_data = mask_im.getchannel("A").convert("L")
-                mask_im = _Image.merge("RGB", [alpha_data, alpha_data, alpha_data])
+            if mask is None:
+                mask_im = None
+            else:
+                mask_im = processing_utils.decode_base64_to_image(mask)
             return {
                 "image": self._format_image(im),
                 "mask": self._format_image(mask_im),
             }
+        
+        if self.tool == "boxes" and self.source in ["upload", "webcam"]:
+            return {"image": self._format_image(im), "boxes": boxes}
 
         return self._format_image(im)
 
